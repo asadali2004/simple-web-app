@@ -47,7 +47,7 @@ stage('Run Container') {
                 docker inspect -f "{{.State.Running}}" simple-web-app-container | find "true" >nul
                 if %errorlevel% neq 0 (
                     echo ERROR: Container is not running!
-                    docker logs simple-web-app-container
+                    docker logs simple-web-app-container  <-- **THIS IS WHAT WE NEED!**
                     exit /b 1
                 )
 
@@ -65,11 +65,11 @@ stage('Run Container') {
                     echo Waiting for application to start...
                     timeout /t 10 >nul
                     verify.bat
-                    if %errorlevel% neq 0 (
-                        echo ERROR: Verification failed!
-                        docker logs simple-web-app-container
-                        exit /b 1
-                    )
+                   if %errorlevel% neq 0 (
+                    echo ERROR: Verification failed!
+                    docker logs simple-web-app-container <-- **ALSO LOOK HERE!**
+                    exit /b 1
+                )
                 """
             }
         }
