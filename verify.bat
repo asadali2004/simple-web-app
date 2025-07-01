@@ -1,17 +1,24 @@
 @echo off
-echo Checking container status...
-docker ps | find "simple-web-app-container" > nul
+echo Starting verification...
+
+:: Check container status
+docker ps | find "simple-web-app-container" >nul
 if %errorlevel% neq 0 (
-   echo ERROR: Container is not running
-   exit /b 1
+    echo ERROR: Container not running!
+    docker ps -a | find "simple-web-app-container"
+    exit /b 1
 )
 
-echo Testing application...
-curl -s http://localhost:8081 | find "Welcome to My Simple Web App" > nul
+:: Test application response
+curl -s -o response.html http://localhost:8081
+find "Welcome to My Simple Web App" response.html >nul
 if %errorlevel% neq 0 (
-   echo ERROR: Application not responding correctly
-   exit /b 1
+    echo ERROR: Application not responding correctly
+    type response.html
+    del response.html
+    exit /b 1
 )
 
-echo SUCCESS: Container is running and application is accessible
+echo Verification successful!
+del response.html 2>nul
 exit /b 0
