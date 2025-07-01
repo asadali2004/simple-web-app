@@ -9,7 +9,7 @@ if %errorlevel% equ 0 (
 )
 
 echo Testing web application...
-curl -s http://localhost:8080 | find "Welcome to My Simple Web App"
+curl -s http://localhost:8081 | find "Welcome to My Simple Web App"
 if %errorlevel% equ 0 (
     echo Web application is serving content correctly
 ) else (
