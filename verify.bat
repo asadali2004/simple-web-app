@@ -5,7 +5,7 @@ if %errorlevel% equ 0 (
     echo Container is running
 ) else (
     echo Container is not running
-    exit 1
+    exit /b 1
 )
 
 echo Testing web application...
@@ -14,5 +14,5 @@ if %errorlevel% equ 0 (
     echo Web application is serving content correctly
 ) else (
     echo Web application is not responding correctly
-    exit 1
+    exit /b 1
 )
