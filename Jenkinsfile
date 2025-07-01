@@ -27,33 +27,36 @@ pipeline {
             }
         }
 
-        stage('Run Container') {
-            steps {
-                script {
-                    bat """
-                        @echo off
-                        echo [1/3] Stopping old container...
-                        docker stop simple-web-app-container >nul 2>&1 && (
-                            echo Stopped container
-                            docker rm simple-web-app-container >nul 2>&1 && echo Removed container
-                        ) || echo No existing container found
+stage('Run Container') {
+    steps {
+        script {
+            bat """
+                @echo off
+                echo [1/3] Stopping old container...
+                docker stop simple-web-app-container >nul 2>&1 && (
+                    echo Stopped container
+                    docker rm simple-web-app-container >nul 2>&1 && echo Removed container
+                ) || echo No existing container found
 
-                        echo [2/3] Starting new container...
-                        docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}
+                echo [2/3] Starting new container...
+                docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}
 
-                        echo [3/3] Verify container started...
-                        timeout /t 5 >nul
-                        docker ps -a | find "simple-web-app-container" >nul
-                        if %errorlevel% neq 0 (
-                            echo ERROR: Container failed to start!
-                            docker logs simple-web-app-container
-                            exit /b 1
-                        )
-                        echo Container started successfully
-                    """
-                }
-            }
+                echo [3/3] Checking if container is running...
+                timeout /t 5 >nul
+
+                docker inspect -f "{{.State.Running}}" simple-web-app-container | find "true" >nul
+                if %errorlevel% neq 0 (
+                    echo ERROR: Container is not running!
+                    docker logs simple-web-app-container
+                    exit /b 1
+                )
+
+                echo Container started successfully and is running.
+            """
         }
+    }
+}
+
 
         stage('Verify Deployment') {
             steps {
