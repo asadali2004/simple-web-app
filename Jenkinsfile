@@ -20,11 +20,13 @@ pipeline {
         stage('Run Container') {
             steps {
                 script {
-                    // Stop and remove any existing container (Windows version)
-                    bat 'docker stop simple-web-app-container || echo "No container to stop"'
-                    bat 'docker rm simple-web-app-container || echo "No container to remove"'
+                    // Gracefully stop and remove any existing container
+                    bat '''
+                        docker stop simple-web-app-container 2> nul || echo "No running container to stop"
+                        docker rm simple-web-app-container 2> nul || echo "No container to remove"
+                    '''
                     
-                    // Run new container
+                    // Run new container with health check
                     bat "docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}"
                 }
             }
@@ -40,8 +42,10 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
-            bat 'docker stop simple-web-app-container || echo "No container to stop"'
-            bat 'docker rm simple-web-app-container || echo "No container to remove"'
+            bat '''
+                docker stop simple-web-app-container 2> nul || echo "No container to stop"
+                docker rm simple-web-app-container 2> nul || echo "No container to remove"
+            '''
         }
     }
 }
