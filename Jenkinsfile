@@ -22,17 +22,21 @@ pipeline {
             }
         }
         
-        stage('Run Container') {
-            steps {
-                script {
-                    bat '''
-                        @echo off
-                        docker stop simple-web-app-container 2> nul && docker rm simple-web-app-container 2> nul || echo No existing container found
-                    '''
-                    bat "docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}"
-                }
-            }
+stage('Run Container') {
+    steps {
+        script {
+            bat '''
+                @echo off
+                echo Stopping any existing container...
+                docker stop simple-web-app-container >nul 2>&1
+                docker rm simple-web-app-container >nul 2>&1
+                REM Ignore any errors from above and continue
+            '''
+            bat "docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}"
         }
+    }
+}
+
         
         stage('Verify Deployment') {
             steps {
