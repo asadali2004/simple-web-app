@@ -17,7 +17,7 @@ pipeline {
             steps {
                 script {
                     // Build with proper Windows path
-                    dockerImage = docker.build("simple-web-app:${env.BUILD_ID}", "--force-rm -f ${WORKSPACE}\\Dockerfile ${WORKSPACE}")
+                    dockerImage = docker.build("simple-web-app:${env.BUILD_ID}", "--force-rm -f ${WORKSPACE}/Dockerfile ${WORKSPACE}")
                 }
             }
         }
