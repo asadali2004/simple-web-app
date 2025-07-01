@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    environment {
+        DOCKER_HOST = "tcp://localhost:2375"
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -12,7 +16,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("simple-web-app:${env.BUILD_ID}")
+                    // Build with proper Windows path
+                    dockerImage = docker.build("simple-web-app:${env.BUILD_ID}", "--force-rm -f ${WORKSPACE}\\Dockerfile ${WORKSPACE}")
                 }
             }
         }
@@ -20,13 +25,10 @@ pipeline {
         stage('Run Container') {
             steps {
                 script {
-                    // Gracefully stop and remove any existing container
                     bat '''
-                        docker stop simple-web-app-container 2> nul || echo "No running container to stop"
-                        docker rm simple-web-app-container 2> nul || echo "No container to remove"
+                        @echo off
+                        docker stop simple-web-app-container 2> nul && docker rm simple-web-app-container 2> nul || echo No existing container found
                     '''
-                    
-                    // Run new container with health check
                     bat "docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}"
                 }
             }
@@ -36,16 +38,6 @@ pipeline {
             steps {
                 bat 'verify.bat'
             }
-        }
-    }
-    
-    post {
-        always {
-            echo 'Cleaning up...'
-            bat '''
-                docker stop simple-web-app-container 2> nul || echo "No container to stop"
-                docker rm simple-web-app-container 2> nul || echo "No container to remove"
-            '''
         }
     }
 }
