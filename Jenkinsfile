@@ -1,12 +1,17 @@
 pipeline {
     agent any
 
+    environment {
+        // Force consistent path handling
+        DOCKER_BUILD_ARGS = "--force-rm -f ${WORKSPACE}\\Dockerfile ${WORKSPACE}"
+    }
+
     stages {
         stage('Checkout') {
             steps {
                 checkout([$class: 'GitSCM',
-                          branches: [[name: '*/main']],
-                          userRemoteConfigs: [[url: 'https://github.com/asadali2004/simple-web-app.git']]
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/asadali2004/simple-web-app.git']]
                 ])
             }
         }
@@ -14,10 +19,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build(
-                        "simple-web-app:${env.BUILD_ID}",
-                        "--force-rm -f ${WORKSPACE}/Dockerfile ${WORKSPACE}"
-                    )
+                    // Explicit build with Windows paths
+                    bat """
+                        docker build -t simple-web-app:${env.BUILD_ID} ${DOCKER_BUILD_ARGS}
+                    """
                 }
             }
         }
@@ -25,52 +30,57 @@ pipeline {
         stage('Run Container') {
             steps {
                 script {
-                    bat '''
+                    bat """
                         @echo off
-                        echo Cleaning up old container...
-                        docker stop simple-web-app-container >nul 2>&1
-                        docker rm simple-web-app-container >nul 2>&1
+                        echo [1/3] Stopping old container...
+                        docker stop simple-web-app-container >nul 2>&1 && (
+                            echo Stopped container
+                            docker rm simple-web-app-container >nul 2>&1 && echo Removed container
+                        ) || echo No existing container found
 
-                        echo Running new container...
-                        docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:%BUILD_ID%
+                        echo [2/3] Starting new container...
+                        docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}
+
+                        echo [3/3] Verify container started...
+                        timeout /t 5 >nul
+                        docker ps -a | find "simple-web-app-container" >nul
                         if %errorlevel% neq 0 (
-                            echo ERROR: Failed to run the container!
-                            docker ps -a
+                            echo ERROR: Container failed to start!
+                            docker logs simple-web-app-container
                             exit /b 1
-                        ) else (
-                            echo Container started successfully.
                         )
-
-                        echo Showing container list...
-                        docker ps -a
-                    '''
+                        echo Container started successfully
+                    """
                 }
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                bat '''
-                    echo Verifying deployment...
+                bat """
+                    @echo off
+                    echo Waiting for application to start...
+                    timeout /t 10 >nul
                     verify.bat
                     if %errorlevel% neq 0 (
-                        echo ERROR: verify.bat failed!
+                        echo ERROR: Verification failed!
                         docker logs simple-web-app-container
                         exit /b 1
                     )
-                '''
+                """
             }
         }
     }
 
     post {
         always {
-            echo 'Cleaning up Docker environment...'
-            bat '''
-                docker stop simple-web-app-container >nul 2>&1
-                docker rm simple-web-app-container >nul 2>&1
-                docker image prune -f >nul 2>&1
-            '''
+            bat """
+                @echo off
+                echo Cleaning up containers...
+                docker stop simple-web-app-container >nul 2>&1 || echo No container to stop
+                docker rm simple-web-app-container >nul 2>&1 || echo No container to remove
+                echo Cleanup complete
+            """
         }
     }
 }
