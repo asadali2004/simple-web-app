@@ -25,7 +25,7 @@ pipeline {
                     bat 'docker rm simple-web-app-container || echo "No container to remove"'
                     
                     // Run new container
-                    bat "docker run --name simple-web-app-container -p 8080:80 -d simple-web-app:${env.BUILD_ID}"
+                    bat "docker run --name simple-web-app-container -p 8081:80 -d simple-web-app:${env.BUILD_ID}"
                 }
             }
         }
