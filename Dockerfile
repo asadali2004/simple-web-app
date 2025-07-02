@@ -1,8 +1,9 @@
 # Use the official Nginx image as a base
-FROM nginx:alpine
+FROM nginx
 
 # Copy the web application files to the Nginx default directory
 COPY app /usr/share/nginx/html
+
 
 # Expose port 80
 EXPOSE 80
