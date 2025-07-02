@@ -39,7 +39,7 @@ pipeline {
 
         stage('Run New Container') {
             steps {
-                bat """docker run -d --name %CONTAINER_NAME% -p 8081:%PORT% %IMAGE_NAME%:%BUILD_NUMBER%"""
+                bat """docker run -d --name %CONTAINER_NAME% -p 8082:80 %IMAGE_NAME%:%BUILD_NUMBER%"""
             }
         }
     
