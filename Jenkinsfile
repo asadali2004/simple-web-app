@@ -10,12 +10,12 @@ pipeline {
         stage('Checkout')       { steps { git url: 'https://github.com/asadali2004/simple-web-app.git', branch: 'main' } }
         stage('Build Image')    { steps { bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ." } }
 
-        stage('Replace Old')    {
-            steps {
-                bat 'docker stop %CONTAINER_NAME% >nul 2>&1 || echo not running'
-                bat 'docker rm   %CONTAINER_NAME% >nul 2>&1 || echo already removed'
-            }
-        }
+        // stage('Replace Old')    {
+        //     steps {
+        //         bat 'docker stop %CONTAINER_NAME% >nul 2>&1 || echo not running'
+        //         bat 'docker rm   %CONTAINER_NAME% >nul 2>&1 || echo already removed'
+        //     }
+        // }
 
         stage('Run Container')  {
             steps {
