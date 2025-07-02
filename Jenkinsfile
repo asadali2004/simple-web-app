@@ -27,6 +27,12 @@ pipeline {
                 '''
             }
         }
+        stage('Verify Deployment') {
+    steps {
+        bat 'verify.bat'
+    }
+}
+
     }
 
     post {
