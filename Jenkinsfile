@@ -2,76 +2,71 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_BUILD_ARGS = "--force-rm -f ${WORKSPACE}\\Dockerfile ${WORKSPACE}"
+        IMAGE_NAME = "simple-web-app"
+        CONTAINER_NAME = "simple-web-app-container"
+        PORT = "80"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: 'https://github.com/asadali2004/simple-web-app.git']]
-                ])
+                git branch: 'main', url: 'https://github.com/asadali2004/simple-web-app.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat """
-                    docker build -t simple-web-app:%BUILD_ID% %DOCKER_BUILD_ARGS%
-                """
+                bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ."
             }
         }
 
-        stage('Run Container') {
+        stage('Stop and Remove Old Container') {
             steps {
-                bat """
-                    @echo off
-                    echo Stopping old container if exists...
-                    docker stop simple-web-app-container >nul 2>&1
-                    docker rm simple-web-app-container >nul 2>&1
+                bat '''
+docker stop %CONTAINER_NAME%
+IF %ERRORLEVEL% NEQ 0 (
+    echo Container not running, continuing...
+    EXIT /B 0
+)
+'''
+                bat '''
+docker rm %CONTAINER_NAME%
+IF %ERRORLEVEL% NEQ 0 (
+    echo Container not found, continuing...
+    EXIT /B 0
+)
+'''
+            }
+        }
 
-                    echo Starting new container...
-                    docker run -d --name simple-web-app-container -p 8081:80 simple-web-app:%BUILD_ID%
-
-                    timeout /t 5 >nul
-
-                    FOR /F %%i IN ('docker inspect -f "{{.State.Running}}" simple-web-app-container') DO (
-                        IF "%%i" NEQ "true" (
-                            echo ERROR: Container is not running!
-                            docker logs simple-web-app-container
-                            exit /b 1
-                        )
-                    )
-                """
+        stage('Run New Container') {
+            steps {
+                bat "docker run -d --name %CONTAINER_NAME% -p 8082:%PORT% %IMAGE_NAME%:%BUILD_NUMBER%"
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                bat """
-                    @echo off
-                    timeout /t 10 >nul
+                bat '''
+                    timeout /t 5 >nul
                     call verify.bat
                     IF %ERRORLEVEL% NEQ 0 (
-                        echo ERROR: Verification failed!
-                        docker logs simple-web-app-container
+                        echo Verification failed!
+                        docker logs %CONTAINER_NAME%
                         exit /b 1
                     )
-                """
+                '''
             }
         }
     }
 
     post {
         always {
-            bat """
-                @echo off
-                echo Cleaning up containers...
-                docker stop simple-web-app-container >nul 2>&1
-                docker rm simple-web-app-container >nul 2>&1
-                echo Cleanup complete
-            """
+            bat '''
+docker stop %CONTAINER_NAME% >nul 2>&1
+docker rm %CONTAINER_NAME% >nul 2>&1
+echo Cleanup complete.
+'''
         }
     }
 }
