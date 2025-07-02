@@ -10,7 +10,7 @@ if %errorlevel% neq 0 (
 )
 
 :: Test application response
-curl -s http://localhost:8081 > response.html
+curl -s http://localhost:8082 > response.html
 findstr /I "Welcome to My Simple Web App" response.html >nul
 if %errorlevel% neq 0 (
     echo ERROR: Application not responding correctly
