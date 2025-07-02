@@ -21,14 +21,22 @@ pipeline {
             }
         }
 
-        stage('Stop and Remove Old Container') {
-            steps {
-                bat '''
-                    docker stop %CONTAINER_NAME% >nul 2>&1
-                    docker rm %CONTAINER_NAME% >nul 2>&1
-                '''
-            }
-        }
+       stage('Stop and Remove Old Container') {
+    steps {
+        bat '''
+            docker stop %CONTAINER_NAME% >nul 2>&1
+            IF %ERRORLEVEL% NEQ 0 (
+                echo Container not running or already stopped.
+            )
+            docker rm %CONTAINER_NAME% >nul 2>&1
+            IF %ERRORLEVEL% NEQ 0 (
+                echo Container not found or already removed.
+            )
+            EXIT /B 0
+        '''
+    }
+}
+
 
         stage('Run New Container') {
             steps {
