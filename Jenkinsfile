@@ -4,7 +4,8 @@ pipeline {
     environment {
         IMAGE_NAME = "simple-web-app"
         CONTAINER_NAME = "simple-web-app-container"
-        PORT = "80"
+        CONTAINER_PORT = "80"
+        HOST_PORT = "8082"
     }
 
     stages {
@@ -23,25 +24,25 @@ pipeline {
         stage('Stop and Remove Old Container') {
             steps {
                 bat '''
-docker stop %CONTAINER_NAME%
-IF %ERRORLEVEL% NEQ 0 (
-    echo Container not running, continuing...
-    EXIT /B 0
-)
-'''
-                bat '''
-docker rm %CONTAINER_NAME%
-IF %ERRORLEVEL% NEQ 0 (
-    echo Container not found, continuing...
-    EXIT /B 0
-)
-'''
+                    docker stop %CONTAINER_NAME% >nul 2>&1
+                    docker rm %CONTAINER_NAME% >nul 2>&1
+                '''
             }
         }
 
         stage('Run New Container') {
             steps {
-                bat "docker run -d --name %CONTAINER_NAME% -p 8082:%PORT% %IMAGE_NAME%:%BUILD_NUMBER%"
+                bat '''
+                    docker run -d --name %CONTAINER_NAME% -p %HOST_PORT%:%CONTAINER_PORT% %IMAGE_NAME%:%BUILD_NUMBER%
+                    timeout /t 3 >nul
+
+                    docker inspect -f "{{.State.Running}}" %CONTAINER_NAME% | findstr true >nul
+                    IF %ERRORLEVEL% NEQ 0 (
+                        echo ERROR: Container failed to start!
+                        docker logs %CONTAINER_NAME%
+                        exit /b 1
+                    )
+                '''
             }
         }
 
@@ -63,10 +64,10 @@ IF %ERRORLEVEL% NEQ 0 (
     post {
         always {
             bat '''
-docker stop %CONTAINER_NAME% >nul 2>&1
-docker rm %CONTAINER_NAME% >nul 2>&1
-echo Cleanup complete.
-'''
+                docker stop %CONTAINER_NAME% >nul 2>&1
+                docker rm %CONTAINER_NAME% >nul 2>&1
+                echo Cleanup complete.
+            '''
         }
     }
 }
