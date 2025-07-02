@@ -37,22 +37,12 @@ pipeline {
     }
 }
 
-
-        stage('Run New Container') {
+stage('Run New Container') {
             steps {
-                bat '''
-                    docker run -d --name %CONTAINER_NAME% -p %HOST_PORT%:%CONTAINER_PORT% %IMAGE_NAME%:%BUILD_NUMBER%
-                    timeout /t 3 >nul
-
-                    docker inspect -f "{{.State.Running}}" %CONTAINER_NAME% | findstr true >nul
-                    IF %ERRORLEVEL% NEQ 0 (
-                        echo ERROR: Container failed to start!
-                        docker logs %CONTAINER_NAME%
-                        exit /b 1
-                    )
-                '''
+                bat """docker run -d --name %CONTAINER_NAME% -p 8081:%PORT% %IMAGE_NAME%:%BUILD_NUMBER%"""
             }
         }
+    }
 
         stage('Verify Deployment') {
             steps {
