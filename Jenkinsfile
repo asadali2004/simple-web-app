@@ -1,71 +1,51 @@
 pipeline {
     agent any
-
     environment {
-        IMAGE_NAME = "simple-web-app"
+        IMAGE_NAME     = "simple-web-app"
         CONTAINER_NAME = "simple-web-app-container"
-        CONTAINER_PORT = "80"
-        HOST_PORT = "8082"
+        PORT           = "8082"          // single source of truth
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout')       { steps { git url: 'https://github.com/asadali2004/simple-web-app.git', branch: 'main' } }
+        stage('Build Image')    { steps { bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ." } }
+
+        stage('Replace Old')    {
             steps {
-                git branch: 'main', url: 'https://github.com/asadali2004/simple-web-app.git'
+                bat 'docker stop %CONTAINER_NAME% >nul 2>&1 || echo not running'
+                bat 'docker rm   %CONTAINER_NAME% >nul 2>&1 || echo already removed'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Run Container')  {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ."
-            }
-        }
-
-       stage('Stop and Remove Old Container') {
-    steps {
-        bat '''
-            docker stop %CONTAINER_NAME% >nul 2>&1
-            IF %ERRORLEVEL% NEQ 0 (
-                echo Container not running or already stopped.
-            )
-            docker rm %CONTAINER_NAME% >nul 2>&1
-            IF %ERRORLEVEL% NEQ 0 (
-                echo Container not found or already removed.
-            )
-            EXIT /B 0
-        '''
-    }
-}
-
-        stage('Run New Container') {
-            steps {
-                bat """docker run -d --name %CONTAINER_NAME% -p 8082:80 %IMAGE_NAME%:%BUILD_NUMBER%"""
-            }
-        }
-    
-
-        stage('Verify Deployment') {
-            steps {
+                bat "docker run -d --name %CONTAINER_NAME% -p %PORT%:80 %IMAGE_NAME%:%BUILD_NUMBER%"
                 bat '''
-                    timeout /t 5 >nul
-                    call verify.bat
-                    IF %ERRORLEVEL% NEQ 0 (
-                        echo Verification failed!
+                    timeout /t 3 >nul
+                    docker inspect -f "{{.State.Running}}" %CONTAINER_NAME% | findstr true >nul
+                    if %errorlevel% neq 0 (
+                        echo ERROR: container died!
                         docker logs %CONTAINER_NAME%
                         exit /b 1
                     )
                 '''
             }
         }
-    }
 
-    post {
-        always {
-            bat '''
-                docker stop %CONTAINER_NAME% >nul 2>&1
-                docker rm %CONTAINER_NAME% >nul 2>&1
-                echo Cleanup complete.
-            '''
+        stage('Verify') {
+            steps {
+                bat '''
+                    timeout /t 5 >nul
+                    curl -s http://localhost:%PORT% > resp.html
+                    findstr /I "Welcome to My Simple Web App" resp.html >nul
+                    if %errorlevel% neq 0 (
+                        echo Verification failed
+                        type resp.html
+                        exit /b 1
+                    )
+                    echo Verification OK
+                '''
+            }
         }
     }
 }
